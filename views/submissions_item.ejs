@@ -1,0 +1,78 @@
+<% include util %>
+<% include status_label %>
+
+<script src="//cdn.bootcss.com/textfit/2.3.1/textFit.min.js"></script>
+
+<script>
+const submissionUrl = <%- JSON.stringify(displayConfig.inContest ? 
+  syzoj.utils.makeUrl(['contest', 'submission', 'VanDarkholme']) :
+  syzoj.utils.makeUrl(['submission', 'VanDarkholme'])) %>;
+const problemUrl = <%- JSON.stringify(displayConfig.inContest ? 
+  syzoj.utils.makeUrl(['contest', contest.id, 'problem', 'VanDarkholme']) :
+  syzoj.utils.makeUrl(['problem', 'VanDarkholme'])) %>;
+const userUrl = <%- JSON.stringify(syzoj.utils.makeUrl(['user', 'VanDarkholme'])) %>;
+
+Vue.component('submission-item', {
+  template: '#submissionItemTemplate',
+  props: ['data', 'config', 'showRejudge'],
+  computed: {
+    statusString() {
+      const data = this.data;
+      if (data.result) {
+        return data.result.result;
+      } else if (data.running) {
+        return this.config.showResult ? 'Running' : 'Compiling';
+      } else return 'Waiting';
+    },
+    submissionLink() {
+      return submissionUrl.replace('VanDarkholme', this.data.info.submissionId);
+    },
+    problemLink() {
+      return problemUrl.replace('VanDarkholme', this.data.info.problemId);
+    },
+    userLink() {
+      return userUrl.replace('VanDarkholme', this.data.info.userId);
+    },
+    scoreClass() {
+      return "score_" + (parseInt(this.data.result.score / 10) || 0).toString();
+    }
+  },
+  methods: {
+    alpha(number) {
+      if (number && parseInt(number) == number && parseInt(number) > 0) return String.fromCharCode('A'.charCodeAt(0) + parseInt(number) - 1);
+    }
+  },
+  mounted() {
+    textFit(this.$refs.problemLabelTextFit, { maxFontSize: 14 });
+  }
+});
+</script>
+
+<script id="submissionItemTemplate" type="text/x-template">
+<tr>
+  <td><a :href="submissionLink">#{{ data.info.submissionId }}</a></td>
+  <td ref="problemLabel"><a ref="problemLabelTextFit" style="width: 230px; height: 22px; display: block; margin: 0 auto; line-height: 22px;" :href="problemLink">#{{ config.inContest ? alpha(data.info.problemId) : data.info.problemId }}. {{ data.info.problemName }}</a></td>
+  <td><a :href="submissionLink"><status-label :status="statusString"></status-label></a></td>
+
+  <template v-if="data.result">
+  <td v-if="config.showScore"><a :href="submissionLink"><span class="score" :class="scoreClass">{{ (data.result.score != null && data.result.score !== NaN) ? Math.floor(data.result.score) : '' }}</span></a></td>
+  <td v-if="config.showUsage">{{ (data.result.time != null && data.result.time !== NaN) ? data.result.time.toString() + ' ms' : '' }}</td>
+  <td v-if="config.showUsage">{{ (data.result.memory != null && data.result.memory !== NaN) ? data.result.memory.toString() + ' KiB' : '' }}</td>
+  </template> <template v-else>
+  <td v-if="config.showScore"/> <td v-if="config.showUsage"/> <td v-if="config.showUsage"/>
+  </template>
+
+  <td v-if="config.showCode">
+    <span v-if="data.info.language"><a :href="submissionLink">{{ data.info.language  }}</a> / </span>
+    {{ data.info.codeSize }}
+  </td>
+  <td><a :href="userLink">{{ data.info.user }}</a></td>
+  <td>{{ data.info.submitTime }}</td>
+  <td v-if="showRejudge">
+    <form class="have-csrf" :action="submissionLink + '/rejudge'" method="POST">
+      <input type="hidden" name="_csrf" value="<%= req.csrfToken() %>" />
+      <button type="submit" style="color: #000; padding: 0; border: none; background: none;" value="rejudge"><i class="repeat icon"></i></button>
+    </form>
+  </td>
+</tr>
+</script>
